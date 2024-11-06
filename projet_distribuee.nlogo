@@ -32,7 +32,8 @@ end
 
 to move-turtles
   ask turtles [
-    right random 360
+    right random 30
+    left random 30
     forward 0.5
   ]
 end
@@ -40,6 +41,8 @@ end
 to setup-civilians
   create-civilians 25 [ ; nombre choisi au hasard.
     set color white
+    set shape "person"
+    set size 2 ;
     set money number-max-money
     setxy random-xcor random-ycor ; placeholder pour l'instant.
     set label money ; Affiche l'argent initial sur chaque civil
@@ -134,6 +137,8 @@ to convert-civilian-to-thief [civilian-turtle]
       hatch-thieves 1 [
         set money civ-money ; transfère l'argent
         set color red ; change la couleur pour identifier le voleur
+        set shape "person"
+        set size 2 ;
         setxy civ-xcor civ-ycor ; positionne au même endroit que le civil
 
         ; Initialise d'autres propriétés spécifiques aux voleurs si nécessaire
@@ -211,7 +216,6 @@ NIL
 1
 
 @#$#@#$#@
-
 ## WHAT IS IT?
 Ce modèle simule un environnement dynamique où trois types d’agents interagissent : des civils, des voleurs et des gendarmes. Les civils possèdent de l’argent, mais en perdent au fil du temps. Lorsqu’ils n’ont plus d’argent, ils deviennent des voleurs, qui cherchent à voler l’argent des civils. Les gendarmes, quant à eux, tentent de capturer les voleurs et de maintenir l’ordre. La simulation explore les interactions complexes entre ces groupes et les conditions dans lesquelles la sécurité publique peut être maintenue.
 
@@ -256,7 +260,6 @@ Ce modèle utilise des fonctions NetLogo pour gérer les interactions de capture
   
 ## CREDITS AND REFERENCES
 Modèle développé sous NetLogo pour illustrer la dynamique entre civils, voleurs, et gendarmes dans un contexte de gestion de sécurité publique. Ce modèle est inspiré de simulations de type "jeu de société". Pour en savoir plus sur NetLogo, consultez [NetLogo](https://ccl.northwestern.edu/netlogo/).
-
 @#$#@#$#@
 default
 true
