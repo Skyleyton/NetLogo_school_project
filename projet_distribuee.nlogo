@@ -25,6 +25,8 @@ to setup
   set number-min-money 25 ; Si ce seuil est dépassé, le civil devient un voleur.
   set money-timer 0 ; initialisation du timer
   setup-civilians
+  setup-environment
+  setup-prison
   reset-ticks
 end
 
@@ -41,6 +43,20 @@ to setup-civilians
     set money number-max-money
     setxy random-xcor random-ycor ; placeholder pour l'instant.
     set label money ; Affiche l'argent initial sur chaque civil
+  ]
+end
+
+; L'environnement sera de couleur bleu.
+to setup-environment
+  ask patches [
+    set pcolor blue
+  ]
+end
+
+to setup-prison
+  ; Crée un espace vert (désignant la prison) entre ces coordonnées.
+  ask patches with [ (pxcor >= -4 and pxcor <= 6) and (pycor >= -5 and pycor <= 7) ] [
+    set pcolor green
   ]
 end
 
@@ -77,7 +93,7 @@ end
 
 ;Si un civil n'a plus d'argent il devient un voleur et va voler l'argent d'un autre civil
 to steel
-  ask civilians[
+  ask civilians [
     if money = 0 [
       ;set color red
       ;facexy 5 5 ; oriente la tortue vers (target-x, target-y)
