@@ -1,11 +1,10 @@
-; Les variables globales.
 globals [
   number-max-civilian
   number-max-policeman
   number-max-thief
   number-max-money
-
   number-min-money ; Il faut descendre en dessous de ce seuil pour devenir voleur.
+  money-timer ; compteur pour gérer la fréquence de perte d'argent
 ]
 
 ; Il y a 3 types d'agents.
@@ -20,10 +19,19 @@ turtles-own [ money ]
 thieves-own [ strength speed ]
 policemen-own [ strength speed ]
 
+to setup
+  clear-all
+  set number-max-money 250 ; Les civils ne peuvent avoir que 250 pièces au maximum.
+  set number-min-money 25 ; Si ce seuil est dépassé, le civil devient un voleur.
+  set money-timer 0 ; initialisation du timer
+  setup-civilians
+  reset-ticks
+end
+
 to move-turtles
   ask turtles [
     right random 360
-    forward 1
+    forward 0.5
   ]
 end
 
@@ -32,20 +40,97 @@ to setup-civilians
     set color white
     set money number-max-money
     setxy random-xcor random-ycor ; placeholder pour l'instant.
+    set label money ; Affiche l'argent initial sur chaque civil
   ]
-end
-
-to setup
-  clear-all
-  set number-max-money 250 ; Les civils ne peuvent avoir que 250 pièces au maximum.
-  set number-min-money 25 ; Si ce seuil est dépassé, le civil devient un voleur.
-  setup-civilians
-  reset-ticks
 end
 
 to go
   move-turtles
+  set money-timer money-timer + 1 ; incrémentation du timer
+
+  ; Exécute lose-money toutes les 3 secondes (ticks).
+  if money-timer mod 3 = 0 [
+    lose-money
+  ]
+
+  steel
+
   tick
+end
+
+to lose-money
+  ; Vérifie s'il reste au moins 5 tortues civiles
+  if count civilians >= 5 [
+    ; Sélectionne aléatoirement 5 tortues civiles
+    let turtles-to-lose-money n-of 5 civilians
+
+    ask turtles-to-lose-money [
+      let amount-to-lose random 10 + 1 ; un montant entre 1 et 10
+      set money money - amount-to-lose ; décrémenter la variable money
+      if money < 0 [ set money 0 ] ; s'assurer que l'argent ne devient pas négatif
+      set label money ; Met à jour le label pour afficher la nouvelle valeur d'argent
+    ]
+  ]
+end
+
+
+
+;Si un civil n'a plus d'argent il devient un voleur et va voler l'argent d'un autre civil
+to steel
+  ask civilians[
+    if money = 0 [
+      ;set color red
+      ;facexy 5 5 ; oriente la tortue vers (target-x, target-y)
+      ;forward 1 ; avance de 1 unité dans la direction
+      convert-civilian-to-thief self
+    ]
+  ]
+end
+
+
+;Fonction pour que les turtles rouges se dirigent vers turtles blancs
+to move-red-toward-nearest-white
+  ask turtles with [color = red] [ ; uniquement les tortues rouges
+    let target white-nearest-turtle ; trouve la tortue blanche la plus proche
+    if target != nobody [
+      face target ; oriente la tortue vers la cible
+      forward 0.2 ; avance de 1 unité vers la cible
+    ]
+  ]
+end
+
+to-report white-nearest-turtle
+  ; renvoie la tortue blanche la plus proche ou personne si aucune n'existe
+  report min-one-of turtles with [color = white] [distance myself]
+end
+
+;Cette fonction va créé un turtle de type thief à la place d'un turtle de type civilians
+to convert-civilian-to-thief [civilian-turtle]
+  ; Vérifie que la tortue est bien un civil avant la conversion
+  if [breed] of civilian-turtle = civilians [
+    ; Sauvegarde des informations importantes du civil
+    let civ-money [money] of civilian-turtle
+    let civ-xcor [xcor] of civilian-turtle
+    let civ-ycor [ycor] of civilian-turtle
+
+    ; Crée une nouvelle tortue de type thief à la position du civil
+    ask civilian-turtle [
+      hatch-thieves 1 [
+        set money civ-money ; transfère l'argent
+        set color red ; change la couleur pour identifier le voleur
+        setxy civ-xcor civ-ycor ; positionne au même endroit que le civil
+
+        ; Initialise d'autres propriétés spécifiques aux voleurs si nécessaire
+        set strength random 10 + 1
+        set speed random 3 + 1
+        move-red-toward-nearest-white
+        pen-down ;pour afficher la trace des voleurs
+      ]
+
+      ; Supprime la tortue civile originale
+      die
+    ]
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
