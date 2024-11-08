@@ -5,6 +5,9 @@ globals [
   number-max-money
   number-min-money ; Il faut descendre en dessous de ce seuil pour devenir voleur.
   money-timer ; compteur pour gérer la fréquence de perte d'argent
+  nbrC
+  detection-radius ;
+
 ]
 
 ; Il y a 3 types d'agents.
@@ -16,31 +19,73 @@ breed [ thieves thief ]
 turtles-own [ money ]
 
 ; Il n'y a que les policiers et les voleurs qui ont un certain niveau de force et un certain niveau de vitesse.
-thieves-own [ strength speed ]
-policemen-own [ strength speed ]
+thieves-own [ strength speed captured? escort? ]
+policemen-own [ strength speed helping? has-captured?]
+
+
+patches-own [ is-prison? ]
+
+
 
 to setup
   clear-all
   set number-max-money 250 ; Les civils ne peuvent avoir que 250 pièces au maximum.
   set number-min-money 25 ; Si ce seuil est dépassé, le civil devient un voleur.
   set money-timer 0 ; initialisation du timer
+  set nbrC 25
   setup-civilians
+  setup-environment
+  setup-prison
   reset-ticks
+  set detection-radius 5 ;
 end
 
 to move-turtles
-  ask turtles [
-    right random 360
+  ; Les civils et policiers bougent toujours
+  ask civilians [
+    right random 30
+    left random 30
+    forward 0.5
+  ]
+  
+  ask policemen with [not has-captured?][
+    right random 30
+    left random 30
+    forward 0.5
+  ]
+
+  ; Les voleurs bougent uniquement s'ils ne sont pas capturés
+  ask thieves with [not captured?] [
+    right random 30
+    left random 30
     forward 0.5
   ]
 end
 
 to setup-civilians
-  create-civilians 25 [ ; nombre choisi au hasard.
+  create-civilians nbrC [ ; nombre choisi au hasard.
     set color white
+    set shape "person"
+    set size 2 ;
     set money number-max-money
     setxy random-xcor random-ycor ; placeholder pour l'instant.
     set label money ; Affiche l'argent initial sur chaque civil
+  ]
+end
+
+; L'environnement sera de couleur bleu.
+to setup-environment
+  ask patches [
+    set pcolor grey
+  ]
+end
+
+to setup-prison
+  ; Crée un espace vert (désignant la prison) entre ces coordonnées.
+  ask patches with [ (pxcor >= -4 and pxcor <= 6) and (pycor >= -5 and pycor <= 7) ] [
+    set pcolor green
+    set is-prison? true
+
   ]
 end
 
@@ -52,8 +97,9 @@ to go
   if money-timer mod 3 = 0 [
     lose-money
   ]
-
-  steel
+ 
+    check-civilians
+		pursue-thieves
 
   tick
 end
@@ -73,20 +119,25 @@ to lose-money
   ]
 end
 
-
-
-;Si un civil n'a plus d'argent il devient un voleur et va voler l'argent d'un autre civil
-to steel
-  ask civilians[
+to check-civilians
+  ask civilians [
     if money = 0 [
-      ;set color red
-      ;facexy 5 5 ; oriente la tortue vers (target-x, target-y)
-      ;forward 1 ; avance de 1 unité dans la direction
-      convert-civilian-to-thief self
+      convert-civilian self
     ]
   ]
 end
 
+to convert-civilian [civilian-turtle]
+  let num-policemen count policemen
+  let num-thieves count thieves
+
+  ; Vérifie si le nombre de policiers est inférieur au nombre de voleurs, sinon donne une chance aléatoire
+  ifelse (num-policemen < num-thieves) or (num-policemen = num-thieves and random 2 = 0) [
+    convert-civilian-to-policeman civilian-turtle
+  ] [
+    convert-civilian-to-thief civilian-turtle
+  ]
+end
 
 ;Fonction pour que les turtles rouges se dirigent vers turtles blancs
 to move-red-toward-nearest-white
@@ -104,34 +155,126 @@ to-report white-nearest-turtle
   report min-one-of turtles with [color = white] [distance myself]
 end
 
-;Cette fonction va créé un turtle de type thief à la place d'un turtle de type civilians
-to convert-civilian-to-thief [civilian-turtle]
-  ; Vérifie que la tortue est bien un civil avant la conversion
+
+to convert-civilian-to-policeman [civilian-turtle]
   if [breed] of civilian-turtle = civilians [
-    ; Sauvegarde des informations importantes du civil
     let civ-money [money] of civilian-turtle
     let civ-xcor [xcor] of civilian-turtle
     let civ-ycor [ycor] of civilian-turtle
 
-    ; Crée une nouvelle tortue de type thief à la position du civil
     ask civilian-turtle [
-      hatch-thieves 1 [
-        set money civ-money ; transfère l'argent
-        set color red ; change la couleur pour identifier le voleur
-        setxy civ-xcor civ-ycor ; positionne au même endroit que le civil
-
-        ; Initialise d'autres propriétés spécifiques aux voleurs si nécessaire
+      hatch-policemen 1 [
+        set money civ-money
+        set color blue
+        set shape "person"
+        set size 2
+        setxy civ-xcor civ-ycor
         set strength random 10 + 1
         set speed random 3 + 1
-        move-red-toward-nearest-white
-        pen-down ;pour afficher la trace des voleurs
-      ]
+				set has-captured? false ; Initialisation booléenne
 
-      ; Supprime la tortue civile originale
+      ]
       die
     ]
   ]
 end
+
+
+
+;Cette fonction va créé un turtle de type thief à la place d'un turtle de type civilians
+to convert-civilian-to-thief [civilian-turtle]
+  if [breed] of civilian-turtle = civilians [
+    let civ-money [money] of civilian-turtle
+    let civ-xcor [xcor] of civilian-turtle
+    let civ-ycor [ycor] of civilian-turtle
+
+    ask civilian-turtle [
+      hatch-thieves 1 [
+        set money civ-money
+        set color red
+        set shape "person"
+        set size 2
+        setxy civ-xcor civ-ycor
+        set strength random 10 + 1
+        set speed random 3 + 1
+        set captured? false ; Initialisation booléenne
+        set escort? false ; Initialisation booléenne
+      ]
+      die
+    ]
+  ]
+end
+
+
+to pursue-thieves
+  ask policemen with [has-captured? = false ] [
+    let nearest-thief min-one-of (thieves in-radius detection-radius) with [captured? = false] [distance myself]
+    if nearest-thief != nobody [
+      face nearest-thief
+      forward 0.1
+      if distance nearest-thief < 1 [
+        capture-thief self nearest-thief ; Passe le policier et le voleur capturé
+      ]
+    ]
+  ]
+end
+
+
+to capture-thief [policeman-turtle thief-turtle]
+  ask thief-turtle [
+    set captured? true
+    set color yellow ; Change la couleur pour indiquer la capture
+  ]
+  ask policeman-turtle [
+    set has-captured? true ; Marque le policier comme ayant capturé un voleur
+    set helping? true
+  ]
+  
+  ; Cherche un deuxième policier dans le rayon de détection qui n'a pas capturé
+  let second-policeman min-one-of (policemen in-radius detection-radius) with [has-captured? = false and helping? = false] [distance policeman-turtle]
+  
+  if second-policeman != nobody [
+    ask second-policeman [
+      set helping? true ; marque le policier comme aidant
+      escort-thief policeman-turtle thief-turtle second-policeman ; Lance l'escorte
+    ]
+  ]
+end
+
+
+
+to escort-thief [first-policeman thief-turtle second-policeman]
+  ; Demande aux policiers et au voleur de se déplacer ensemble vers la prison
+  ask first-policeman [
+    face patch 1 1 ; point d'entrée de la prison
+    forward 0.1
+  ]
+  ask second-policeman [
+    face patch 1 1
+    forward 0.1
+  ]
+  ask thief-turtle [
+    face patch 1 1
+    forward 0.1
+  ]
+  
+  ; Vérifie si tous les trois sont dans la prison
+  if [is-prison?] of patch-here [
+    ; Libère le voleur et remet les policiers à leur état initial
+    ask thief-turtle [
+      die ;(à changer plus tard)
+    ]
+    ask first-policeman [
+      set has-captured? false
+      set helping? false
+    ]
+    ask second-policeman [
+      set helping? false
+    ]
+  ]
+end
+
+
 @#$#@#$#@
 GRAPHICS-WINDOW
 441
@@ -196,40 +339,49 @@ NIL
 
 @#$#@#$#@
 ## WHAT IS IT?
-
-(a general understanding of what the model is trying to show or explain)
+Ce modèle simule un environnement dynamique où trois types d’agents interagissent : des civils, des voleurs et des gendarmes. Les civils possèdent de l’argent, mais en perdent au fil du temps. Lorsqu’ils n’ont plus d’argent, ils deviennent des voleurs, qui cherchent à voler l’argent des civils. Les gendarmes, quant à eux, tentent de capturer les voleurs et de maintenir l’ordre. La simulation explore les interactions complexes entre ces groupes et les conditions dans lesquelles la sécurité publique peut être maintenue.
 
 ## HOW IT WORKS
+Le modèle démarre avec un nombre de civils, de voleurs, et de gendarmes prédéfinis :
+- **Civils** : Ils commencent avec une certaine somme d’argent. Leur argent diminue progressivement, et lorsqu’il atteint zéro, le civil se transforme en voleur.
+- **Voleurs** : Ils volent les civils en les touchant, transférant ainsi une partie de leur argent. Ils peuvent être capturés par les gendarmes, mais peuvent également être libérés par d'autres voleurs.
+- **Gendarmes** : Ils patrouillent pour capturer les voleurs. Lorsqu’ils touchent un voleur, ils immobilisent celui-ci. Si un autre gendarme touche un voleur capturé, ce dernier est envoyé en prison, à moins qu’un autre voleur n’intervienne pour le libérer.
+- **Prison** : Les voleurs capturés peuvent être emprisonnés, mais ils ont une chance de s'évader (5 % par "tick").
 
-(what rules the agents use to create the overall behavior of the model)
+La simulation se termine une fois que tous les voleurs sont en prison.
 
 ## HOW TO USE IT
-
-(how to use the model, including a description of each of the items in the Interface tab)
+1. **Configuration** : Appuyez sur le bouton “setup” pour initialiser les civils, voleurs et gendarmes, avec leurs positions et caractéristiques de départ.
+2. **Démarrage de la simulation** : Appuyez sur “go” pour lancer la simulation en continu.
+3. **Suivi des agents** : Observez les civils perdant progressivement de l’argent, les voleurs volant les civils, et les gendarmes capturant les voleurs.
+4. **Éléments d'interface** : 
+   - **Sliders** pour ajuster le nombre de civils, voleurs et gendarmes au début de la simulation.
+   - **Moniteurs** pour afficher le nombre d’agents en chaque état (ex. civils restants, voleurs en fuite, voleurs en prison).
 
 ## THINGS TO NOTICE
-
-(suggested things for the user to notice while running the model)
+- **Transformation des civils en voleurs** : Au fil du temps, le nombre de civils diminue en raison de la perte d’argent, et plus de voleurs apparaissent.
+- **Mécanisme de capture** : Les gendarmes arrêtent les voleurs, mais un voleur peut être libéré si un autre voleur le touche avant qu'un autre gendarme n’intervienne.
+- **Equilibre dans la simulation** : La capacité des gendarmes à capturer et emprisonner les voleurs influence la stabilité de l'environnement. Observez si la situation peut rester sous contrôle ou si les voleurs deviennent trop nombreux.
 
 ## THINGS TO TRY
-
-(suggested things for the user to try to do (move sliders, switches, etc.) with the model)
+- **Modifier le nombre initial de chaque type d’agent** : Essayez de démarrer avec plus de voleurs ou de gendarmes, et observez comment cela affecte la dynamique de la simulation.
+- **Ajuster la fréquence de perte d’argent** : En rendant les civils plus vulnérables, ils deviennent voleurs plus rapidement, ce qui pourrait déséquilibrer la simulation.
+- **Augmenter la probabilité d’évasion de la prison** : Voyez comment une augmentation de la probabilité de fuite des voleurs affecte la capacité des gendarmes à maintenir l’ordre.
 
 ## EXTENDING THE MODEL
-
-(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
+- **Ajouter des niveaux de ressources pour les gendarmes** : Par exemple, un temps de réaction ou un budget pour capturer les voleurs, limitant ainsi leur efficacité à maintenir l’ordre.
+- **Créer des civils "riches" et "pauvres"** : Cela permettrait de diversifier les interactions, avec des voleurs potentiellement plus attirés par les civils riches.
+- **Complexifier la prison** : Ajouter des conditions pour augmenter ou diminuer la probabilité de fuite selon le nombre de gendarmes.
 
 ## NETLOGO FEATURES
-
-(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
+Ce modèle utilise des fonctions NetLogo pour gérer les interactions de capture et de libération entre agents, ainsi que pour organiser la zone de prison en tant qu’espace réservé sur la carte. La capacité de conditionner l’état des agents en fonction de leur argent ou de leur proximité avec d'autres agents est un aspect essentiel du modèle. Les événements aléatoires (perte d'argent, évasion) sont également gérés avec des fonctions aléatoires.
 
 ## RELATED MODELS
-
-(models in the NetLogo Models Library and elsewhere which are of related interest)
-
+- **Police et Voleurs** : Modèle NetLogo traitant des interactions entre forces de l’ordre et criminels.
+- **Propagation de la rumeur** : Montre des dynamiques similaires d’interaction et d’influence entre agents.
+  
 ## CREDITS AND REFERENCES
-
-(a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
+Modèle développé sous NetLogo pour illustrer la dynamique entre civils, voleurs, et gendarmes dans un contexte de gestion de sécurité publique. Ce modèle est inspiré de simulations de type "jeu de société". Pour en savoir plus sur NetLogo, consultez [NetLogo](https://ccl.northwestern.edu/netlogo/).
 @#$#@#$#@
 default
 true
