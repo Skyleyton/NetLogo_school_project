@@ -338,39 +338,59 @@ NIL
 @#$#@#$#@
 ## WHAT IS IT?
 
-(a general understanding of what the model is trying to show or explain)
+Ce modèle simule un environnement dynamique où trois types d’agents interagissent : des civils, des voleurs et des gendarmes. Les civils possèdent de l’argent, mais en perdent au fil du temps. Lorsqu’ils n’ont plus d’argent, ils deviennent des voleurs, qui cherchent à voler l’argent des civils. Les gendarmes, quant à eux, tentent de capturer les voleurs et de maintenir l’ordre. La simulation explore les interactions complexes entre ces groupes et les conditions dans lesquelles la sécurité publique peut être maintenue.
 
 ## HOW IT WORKS
 
-(what rules the agents use to create the overall behavior of the model)
+Le modèle démarre avec un nombre de civils, de voleurs, et de gendarmes prédéfinis :
+- **Civils** : Ils commencent avec une certaine somme d’argent. Leur argent diminue progressivement, et lorsqu’il atteint zéro, le civil se transforme en voleur.
+- **Voleurs** : Ils volent les civils en les touchant, transférant ainsi une partie de leur argent. Ils peuvent être capturés par les gendarmes, mais peuvent également être libérés par d'autres voleurs.
+- **Gendarmes** : Ils patrouillent pour capturer les voleurs. Lorsqu’ils touchent un voleur, ils immobilisent celui-ci. Si un autre gendarme touche un voleur capturé, ce dernier est envoyé en prison, à moins qu’un autre voleur n’intervienne pour le libérer.
+- **Prison** : Les voleurs capturés peuvent être emprisonnés, mais ils ont une chance de s'évader (5 % par "tick").
+
+La simulation se termine une fois que tous les voleurs sont en prison.
 
 ## HOW TO USE IT
 
-(how to use the model, including a description of each of the items in the Interface tab)
+1. **Configuration** : Appuyez sur le bouton “setup” pour initialiser les civils, voleurs et gendarmes, avec leurs positions et caractéristiques de départ.
+2. **Démarrage de la simulation** : Appuyez sur “go” pour lancer la simulation en continu.
+3. **Suivi des agents** : Observez les civils perdant progressivement de l’argent, les voleurs volant les civils, et les gendarmes capturant les voleurs.
+4. **Éléments d'interface** : 
+   - **Sliders** pour ajuster le nombre de civils, voleurs et gendarmes au début de la simulation.
+   - **Moniteurs** pour afficher le nombre d’agents en chaque état (ex. civils restants, voleurs en fuite, voleurs en prison).
 
 ## THINGS TO NOTICE
 
-(suggested things for the user to notice while running the model)
-
+- **Transformation des civils en voleurs** : Au fil du temps, le nombre de civils diminue en raison de la perte d’argent, et plus de voleurs apparaissent.
+- **Mécanisme de capture** : Les gendarmes arrêtent les voleurs, mais un voleur peut être libéré si un autre voleur le touche avant qu'un autre gendarme n’intervienne.
+- **Equilibre dans la simulation** : La capacité des gendarmes à capturer et emprisonner les voleurs influence la stabilité de l'environnement. Observez si la situation peut rester sous contrôle ou si les voleurs deviennent trop nombreux.
 ## THINGS TO TRY
 
 (suggested things for the user to try to do (move sliders, switches, etc.) with the model)
 
+
+- **Modifier le nombre initial de chaque type d’agent** : Essayez de démarrer avec plus de voleurs ou de gendarmes, et observez comment cela affecte la dynamique de la simulation.
+- **Ajuster la fréquence de perte d’argent** : En rendant les civils plus vulnérables, ils deviennent voleurs plus rapidement, ce qui pourrait déséquilibrer la simulation.
+- **Augmenter la probabilité d’évasion de la prison** : Voyez comment une augmentation de la probabilité de fuite des voleurs affecte la capacité des gendarmes à maintenir l’ordre.
+
 ## EXTENDING THE MODEL
 
-(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
+- **Ajouter des niveaux de ressources pour les gendarmes** : Par exemple, un temps de réaction ou un budget pour capturer les voleurs, limitant ainsi leur efficacité à maintenir l’ordre.
+- **Créer des civils "riches" et "pauvres"** : Cela permettrait de diversifier les interactions, avec des voleurs potentiellement plus attirés par les civils riches.
+- **Complexifier la prison** : Ajouter des conditions pour augmenter ou diminuer la probabilité de fuite selon le nombre de gendarmes.
 
 ## NETLOGO FEATURES
 
-(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
+Ce modèle utilise des fonctions NetLogo pour gérer les interactions de capture et de libération entre agents, ainsi que pour organiser la zone de prison en tant qu’espace réservé sur la carte. La capacité de conditionner l’état des agents en fonction de leur argent ou de leur proximité avec d'autres agents est un aspect essentiel du modèle. Les événements aléatoires (perte d'argent, évasion) sont également gérés avec des fonctions aléatoires.
 
 ## RELATED MODELS
 
-(models in the NetLogo Models Library and elsewhere which are of related interest)
+- **Police et Voleurs** : Modèle NetLogo traitant des interactions entre forces de l’ordre et criminels.
+- **Propagation de la rumeur** : Montre des dynamiques similaires d’interaction et d’influence entre agents.
 
 ## CREDITS AND REFERENCES
 
-(a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
+Modèle développé sous NetLogo pour illustrer la dynamique entre civils, voleurs, et gendarmes dans un contexte de gestion de sécurité publique. Ce modèle est inspiré de simulations de type "jeu de société". Pour en savoir plus sur NetLogo, consultez [NetLogo](https://ccl.northwestern.edu/netlogo/).
 @#$#@#$#@
 default
 true
