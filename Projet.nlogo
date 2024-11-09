@@ -7,7 +7,7 @@ globals [
   money-timer ; compteur pour gérer la fréquence de perte d'argent
   nbrC
   detection-radius ;
-
+  stunt-timer
 ]
 
 ; Il y a 3 types d'agents.
@@ -20,7 +20,8 @@ turtles-own [ money ]
 
 ; Il n'y a que les policiers et les voleurs qui ont un certain niveau de force et un certain niveau de vitesse.
 thieves-own [ strength speed captured? escort? ]
-policemen-own [ strength speed helping? has-captured?]
+policemen-own [ strength speed helping? has-captured? release-timer ]
+
 
 
 patches-own [ is-prison? ]
@@ -38,6 +39,7 @@ to setup
   setup-prison
   reset-ticks
   set detection-radius 5 ;
+  set stunt-timer timer  ; initialise le temps de début
 end
 
 to move-turtles
@@ -91,18 +93,23 @@ end
 
 to go
   move-turtles
-  set money-timer money-timer + 1 ; incrémentation du timer
+  set money-timer money-timer + 1
 
-  ; Exécute lose-money toutes les 3 secondes (ticks).
   if money-timer mod 3 = 0 [
     lose-money
   ]
 
-    check-civilians
-		pursue-thieves
+  check-civilians
+  pursue-thieves
+  free-thief
+
+  ask policemen [
+    stunt-policemen self ; Vérifier le délai pour chaque policier
+  ]
 
   tick
 end
+
 
 to lose-money
   ; Vérifie s'il reste au moins 5 tortues civiles
@@ -207,7 +214,7 @@ end
 
 
 to pursue-thieves
-  ask policemen with [has-captured? = false ] [
+  ask policemen with [has-captured? = false] [
     let nearest-thief min-one-of (thieves in-radius detection-radius) with [captured? = false] [distance myself]
     if nearest-thief != nobody [
       face nearest-thief
@@ -220,6 +227,7 @@ to pursue-thieves
 end
 
 
+
 to capture-thief [policeman-turtle thief-turtle]
   ask thief-turtle [
     set captured? true
@@ -228,6 +236,7 @@ to capture-thief [policeman-turtle thief-turtle]
   ask policeman-turtle [
     set has-captured? true ; Marque le policier comme ayant capturé un voleur
     set helping? true
+    set release-timer 0 ; Initialiser le compteur
   ]
 
   ; Cherche un deuxième policier dans le rayon de détection qui n'a pas capturé
@@ -236,11 +245,46 @@ to capture-thief [policeman-turtle thief-turtle]
   if second-policeman != nobody [
     ask second-policeman [
       set helping? true ; marque le policier comme aidant
-      escort-thief policeman-turtle thief-turtle second-policeman ; Lance l'escorte
+      ;escort-thief policeman-turtle thief-turtle second-policeman ; Lance l'escorte
     ]
   ]
 end
 
+to free-thief
+  ask turtles with [color = red] [
+    let nearest-thief min-one-of (thieves in-radius detection-radius) with [captured? = true] [distance myself]
+    if nearest-thief != nobody [
+      face nearest-thief
+      forward 0.1
+      if distance nearest-thief < 1 [
+        ask nearest-thief [
+         set captured? false
+         set color red
+        ]
+      ]
+    ]
+
+    let nearest-policeman min-one-of (policemen in-radius detection-radius) with [has-captured? = true] [distance self]
+    if nearest-policeman != nobody [
+      stunt-policemen nearest-policeman
+      ask nearest-policeman [ set release-timer 1 ] ; Démarrer le délai
+    ]
+  ]
+end
+
+
+to stunt-policemen [stunt-policeman]
+  ask stunt-policeman [
+    if release-timer > 0 [
+      set release-timer release-timer + 1
+      if release-timer >= 5 [
+        set has-captured? false
+        set helping? false
+        set release-timer 0 ; Réinitialiser le compteur
+      ]
+    ]
+  ]
+end
 
 
 to escort-thief [first-policeman thief-turtle second-policeman]
@@ -275,13 +319,13 @@ to escort-thief [first-policeman thief-turtle second-policeman]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
-210
-10
-647
-448
+586
+13
+1074
+502
 -1
 -1
-13.0
+14.55
 1
 10
 1
@@ -319,10 +363,10 @@ NIL
 1
 
 BUTTON
-86
-168
-149
+138
+75
 201
+108
 NIL
 go
 T
@@ -334,6 +378,27 @@ NIL
 NIL
 NIL
 1
+
+PLOT
+18
+207
+549
+491
+Nombre de turtle
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Voleurs" 1.0 0 -2674135 true "" "plot count turtles with [color = red]"
+"Policier" 1.0 0 -13345367 true "" "plot count turtles with [color = blue]"
+"Civils" 1.0 0 -16777216 true "" "plot count turtles with [color = white]"
+"Voleurs Capturés" 1.0 0 -1184463 true "" "plot count turtles with [color = yellow]"
 
 @#$#@#$#@
 ## WHAT IS IT?
