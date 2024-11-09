@@ -19,14 +19,11 @@ breed [ thieves thief ]
 turtles-own [ money ]
 
 ; Il n'y a que les policiers et les voleurs qui ont un certain niveau de force et un certain niveau de vitesse.
-thieves-own [ strength speed captured? escort? ]
-policemen-own [ strength speed helping? has-captured? release-timer ]
-
+thieves-own [ strength speed captured? escort? in-prison? ]
+policemen-own [ strength speed helping? has-captured? release-timer in-prison? ]
 
 
 patches-own [ is-prison? ]
-
-
 
 to setup
   clear-all
@@ -50,7 +47,7 @@ to move-turtles
     forward 0.5
   ]
 
-  ask policemen with [not has-captured?][
+  ask policemen with [not has-captured?] [
     right random 30
     left random 30
     forward 0.5
@@ -88,7 +85,6 @@ to setup-prison
   ask patches with [ (pxcor >= -4 and pxcor <= 6) and (pycor >= -5 and pycor <= 7) ] [
     set pcolor green
     set is-prison? true
-
   ]
 end
 
@@ -181,7 +177,7 @@ to convert-civilian-to-policeman [civilian-turtle]
         set strength random 10 + 1
         set speed random 3 + 1
 				set has-captured? false ; Initialisation booléenne
-
+        set in-prison? false
       ]
       die
     ]
@@ -190,7 +186,7 @@ end
 
 
 
-;Cette fonction va créé un turtle de type thief à la place d'un turtle de type civilians
+; Cette fonction va créé un turtle de type thief à la place d'un turtle de type civilians
 to convert-civilian-to-thief [civilian-turtle]
   if [breed] of civilian-turtle = civilians [
     let civ-money [money] of civilian-turtle
@@ -217,37 +213,13 @@ end
 
 to pursue-thieves
   ask policemen with [has-captured? = false] [
-    let nearest-thief min-one-of (thieves in-radius detection-radius) with [captured? = false] [distance myself]
+    let nearest-thief min-one-of (thieves in-radius detection-radius) with [captured? = false and escort? = false] [distance myself]
     if nearest-thief != nobody [
       face nearest-thief
       forward 0.1
       if distance nearest-thief < 1 [
         capture-thief self nearest-thief ; Passe le policier et le voleur capturé
       ]
-    ]
-  ]
-end
-
-
-
-to capture-thief [policeman-turtle thief-turtle]
-  ask thief-turtle [
-    set captured? true
-    set color yellow ; Change la couleur pour indiquer la capture
-  ]
-  ask policeman-turtle [
-    set has-captured? true ; Marque le policier comme ayant capturé un voleur
-    set helping? true
-    set release-timer 0 ; Initialiser le compteur
-  ]
-
-  ; Cherche un deuxième policier dans le rayon de détection qui n'a pas capturé
-  let second-policeman min-one-of (policemen in-radius detection-radius) with [has-captured? = false and helping? = false] [distance policeman-turtle]
-
-  if second-policeman != nobody [
-    ask second-policeman [
-      set helping? true ; marque le policier comme aidant
-      ;escort-thief policeman-turtle thief-turtle second-policeman ; Lance l'escorte
     ]
   ]
 end
@@ -274,6 +246,43 @@ to free-thief
   ]
 end
 
+to capture-thief [policeman-turtle thief-turtle]
+  ask thief-turtle [
+    set captured? true
+    set color yellow ; Change la couleur pour indiquer la capture
+  ]
+  ask policeman-turtle [
+    set has-captured? true ; Marque le policier comme ayant capturé un voleur
+    set helping? true
+    set color black ; Indique que le policier a attrapé un voleur.
+    set release-timer 0 ; Initialiser le compteur
+  ]
+
+  ; Cherche un deuxième policier dans le rayon de détection qui n'a pas capturé
+  let second-policeman min-one-of (policemen in-radius detection-radius) with [has-captured? = false and helping? = false] [distance policeman-turtle]
+
+  if second-policeman != nobody [
+    face policeman-turtle
+    forward 0.1
+    if distance policeman-turtle < 1 [
+      ask second-policeman [
+        set helping? true ; marque le policier comme aidant
+        ; escort-thief policeman-turtle thief-turtle second-policeman ; Lance l'escorte
+      ]
+    ]
+  ]
+end
+
+; Fonction permettant à un autre policier de venir aider un policier ayant arrêté un voleur.
+to help-policeman
+  ask turtles with [color = blue] [
+    let nearest-policeman-blocking-thief min-one-of (policemen in-radius detection-radius) with [has-captured? = true] [distance myself]
+    if nearest-policeman-blocking-thief != nobody [
+      face nearest-policeman-blocking-thief
+      forward 0.1
+    ]
+  ]
+end
 
 to stunt-policemen [stunt-policeman]
   ask stunt-policeman [
@@ -288,36 +297,8 @@ to stunt-policemen [stunt-policeman]
   ]
 end
 
-
 to escort-thief [first-policeman thief-turtle second-policeman]
-  ; Demande aux policiers et au voleur de se déplacer ensemble vers la prison
-  ask first-policeman [
-    face patch 1 1 ; point d'entrée de la prison
-    forward 0.1
-  ]
-  ask second-policeman [
-    face patch 1 1
-    forward 0.1
-  ]
-  ask thief-turtle [
-    face patch 1 1
-    forward 0.1
-  ]
 
-  ; Vérifie si tous les trois sont dans la prison
-  if [is-prison?] of patch-here [
-    ; Libère le voleur et remet les policiers à leur état initial
-    ask thief-turtle [
-      die ;(à changer plus tard)
-    ]
-    ask first-policeman [
-      set has-captured? false
-      set helping? false
-    ]
-    ask second-policeman [
-      set helping? false
-    ]
-  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
