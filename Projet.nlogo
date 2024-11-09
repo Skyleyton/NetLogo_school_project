@@ -71,6 +71,7 @@ to setup-civilians
     set size 2 ;
     set money number-max-money
     setxy random-xcor random-ycor ; placeholder pour l'instant.
+    set label-color black
     set label money ; Affiche l'argent initial sur chaque civil
   ]
 end
@@ -121,6 +122,7 @@ to lose-money
       let amount-to-lose random 10 + 1 ; un montant entre 1 et 10
       set money money - amount-to-lose ; décrémenter la variable money
       if money < 0 [ set money 0 ] ; s'assurer que l'argent ne devient pas négatif
+      set label-color black
       set label money ; Met à jour le label pour afficher la nouvelle valeur d'argent
     ]
   ]
@@ -339,8 +341,8 @@ GRAPHICS-WINDOW
 16
 -16
 16
-0
-0
+1
+1
 1
 ticks
 30.0
