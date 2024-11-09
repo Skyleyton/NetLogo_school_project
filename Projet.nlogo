@@ -7,7 +7,7 @@ globals [
   money-timer ; compteur pour gérer la fréquence de perte d'argent
   nbrC
   detection-radius ;
-
+  stunt-timer
 ]
 
 ; Il y a 3 types d'agents.
@@ -20,7 +20,8 @@ turtles-own [ money ]
 
 ; Il n'y a que les policiers et les voleurs qui ont un certain niveau de force et un certain niveau de vitesse.
 thieves-own [ strength speed captured? escort? ]
-policemen-own [ strength speed helping? has-captured?]
+policemen-own [ strength speed helping? has-captured? release-timer ]
+
 
 
 patches-own [ is-prison? ]
@@ -38,6 +39,7 @@ to setup
   setup-prison
   reset-ticks
   set detection-radius 5 ;
+  set stunt-timer timer  ; initialise le temps de début
 end
 
 to move-turtles
@@ -47,7 +49,7 @@ to move-turtles
     left random 30
     forward 0.5
   ]
-  
+
   ask policemen with [not has-captured?][
     right random 30
     left random 30
@@ -91,18 +93,23 @@ end
 
 to go
   move-turtles
-  set money-timer money-timer + 1 ; incrémentation du timer
+  set money-timer money-timer + 1
 
-  ; Exécute lose-money toutes les 3 secondes (ticks).
   if money-timer mod 3 = 0 [
     lose-money
   ]
- 
-    check-civilians
-		pursue-thieves
+
+  check-civilians
+  pursue-thieves
+  free-thief
+
+  ask policemen [
+    stunt-policemen self ; Vérifier le délai pour chaque policier
+  ]
 
   tick
 end
+
 
 to lose-money
   ; Vérifie s'il reste au moins 5 tortues civiles
@@ -207,7 +214,7 @@ end
 
 
 to pursue-thieves
-  ask policemen with [has-captured? = false ] [
+  ask policemen with [has-captured? = false] [
     let nearest-thief min-one-of (thieves in-radius detection-radius) with [captured? = false] [distance myself]
     if nearest-thief != nobody [
       face nearest-thief
@@ -220,6 +227,7 @@ to pursue-thieves
 end
 
 
+
 to capture-thief [policeman-turtle thief-turtle]
   ask thief-turtle [
     set captured? true
@@ -228,19 +236,55 @@ to capture-thief [policeman-turtle thief-turtle]
   ask policeman-turtle [
     set has-captured? true ; Marque le policier comme ayant capturé un voleur
     set helping? true
+    set release-timer 0 ; Initialiser le compteur
   ]
-  
+
   ; Cherche un deuxième policier dans le rayon de détection qui n'a pas capturé
   let second-policeman min-one-of (policemen in-radius detection-radius) with [has-captured? = false and helping? = false] [distance policeman-turtle]
-  
+
   if second-policeman != nobody [
     ask second-policeman [
       set helping? true ; marque le policier comme aidant
-      escort-thief policeman-turtle thief-turtle second-policeman ; Lance l'escorte
+      ;escort-thief policeman-turtle thief-turtle second-policeman ; Lance l'escorte
     ]
   ]
 end
 
+to free-thief
+  ask turtles with [color = red] [
+    let nearest-thief min-one-of (thieves in-radius detection-radius) with [captured? = true] [distance myself]
+    if nearest-thief != nobody [
+      face nearest-thief
+      forward 0.1
+      if distance nearest-thief < 1 [
+        ask nearest-thief [
+         set captured? false
+         set color red
+        ]
+      ]
+    ]
+
+    let nearest-policeman min-one-of (policemen in-radius detection-radius) with [has-captured? = true] [distance self]
+    if nearest-policeman != nobody [
+      stunt-policemen nearest-policeman
+      ask nearest-policeman [ set release-timer 1 ] ; Démarrer le délai
+    ]
+  ]
+end
+
+
+to stunt-policemen [stunt-policeman]
+  ask stunt-policeman [
+    if release-timer > 0 [
+      set release-timer release-timer + 1
+      if release-timer >= 5 [
+        set has-captured? false
+        set helping? false
+        set release-timer 0 ; Réinitialiser le compteur
+      ]
+    ]
+  ]
+end
 
 
 to escort-thief [first-policeman thief-turtle second-policeman]
@@ -257,7 +301,7 @@ to escort-thief [first-policeman thief-turtle second-policeman]
     face patch 1 1
     forward 0.1
   ]
-  
+
   ; Vérifie si tous les trois sont dans la prison
   if [is-prison?] of patch-here [
     ; Libère le voleur et remet les policiers à leur état initial
@@ -273,17 +317,15 @@ to escort-thief [first-policeman thief-turtle second-policeman]
     ]
   ]
 end
-
-
 @#$#@#$#@
 GRAPHICS-WINDOW
-441
-4
-967
-531
+586
+13
+1074
+502
 -1
 -1
-15.7
+14.55
 1
 10
 1
@@ -297,19 +339,19 @@ GRAPHICS-WINDOW
 16
 -16
 16
-1
-1
+0
+0
 1
 ticks
 30.0
 
 BUTTON
-23
-33
-86
-66
-setup
-setup
+30
+74
+93
+107
+NIL
+setup\n
 NIL
 1
 T
@@ -322,10 +364,10 @@ NIL
 
 BUTTON
 138
-35
+75
 201
-68
-go
+108
+NIL
 go
 T
 1
@@ -337,51 +379,63 @@ NIL
 NIL
 1
 
+PLOT
+18
+207
+549
+491
+Nombre de turtle
+NIL
+NIL
+0.0
+10.0
+0.0
+10.0
+true
+true
+"" ""
+PENS
+"Voleurs" 1.0 0 -2674135 true "" "plot count turtles with [color = red]"
+"Policier" 1.0 0 -13345367 true "" "plot count turtles with [color = blue]"
+"Civils" 1.0 0 -16777216 true "" "plot count turtles with [color = white]"
+"Voleurs Capturés" 1.0 0 -1184463 true "" "plot count turtles with [color = yellow]"
+
 @#$#@#$#@
 ## WHAT IS IT?
-Ce modèle simule un environnement dynamique où trois types d’agents interagissent : des civils, des voleurs et des gendarmes. Les civils possèdent de l’argent, mais en perdent au fil du temps. Lorsqu’ils n’ont plus d’argent, ils deviennent des voleurs, qui cherchent à voler l’argent des civils. Les gendarmes, quant à eux, tentent de capturer les voleurs et de maintenir l’ordre. La simulation explore les interactions complexes entre ces groupes et les conditions dans lesquelles la sécurité publique peut être maintenue.
+
+(a general understanding of what the model is trying to show or explain)
 
 ## HOW IT WORKS
-Le modèle démarre avec un nombre de civils, de voleurs, et de gendarmes prédéfinis :
-- **Civils** : Ils commencent avec une certaine somme d’argent. Leur argent diminue progressivement, et lorsqu’il atteint zéro, le civil se transforme en voleur.
-- **Voleurs** : Ils volent les civils en les touchant, transférant ainsi une partie de leur argent. Ils peuvent être capturés par les gendarmes, mais peuvent également être libérés par d'autres voleurs.
-- **Gendarmes** : Ils patrouillent pour capturer les voleurs. Lorsqu’ils touchent un voleur, ils immobilisent celui-ci. Si un autre gendarme touche un voleur capturé, ce dernier est envoyé en prison, à moins qu’un autre voleur n’intervienne pour le libérer.
-- **Prison** : Les voleurs capturés peuvent être emprisonnés, mais ils ont une chance de s'évader (5 % par "tick").
 
-La simulation se termine une fois que tous les voleurs sont en prison.
+(what rules the agents use to create the overall behavior of the model)
 
 ## HOW TO USE IT
-1. **Configuration** : Appuyez sur le bouton “setup” pour initialiser les civils, voleurs et gendarmes, avec leurs positions et caractéristiques de départ.
-2. **Démarrage de la simulation** : Appuyez sur “go” pour lancer la simulation en continu.
-3. **Suivi des agents** : Observez les civils perdant progressivement de l’argent, les voleurs volant les civils, et les gendarmes capturant les voleurs.
-4. **Éléments d'interface** : 
-   - **Sliders** pour ajuster le nombre de civils, voleurs et gendarmes au début de la simulation.
-   - **Moniteurs** pour afficher le nombre d’agents en chaque état (ex. civils restants, voleurs en fuite, voleurs en prison).
+
+(how to use the model, including a description of each of the items in the Interface tab)
 
 ## THINGS TO NOTICE
-- **Transformation des civils en voleurs** : Au fil du temps, le nombre de civils diminue en raison de la perte d’argent, et plus de voleurs apparaissent.
-- **Mécanisme de capture** : Les gendarmes arrêtent les voleurs, mais un voleur peut être libéré si un autre voleur le touche avant qu'un autre gendarme n’intervienne.
-- **Equilibre dans la simulation** : La capacité des gendarmes à capturer et emprisonner les voleurs influence la stabilité de l'environnement. Observez si la situation peut rester sous contrôle ou si les voleurs deviennent trop nombreux.
+
+(suggested things for the user to notice while running the model)
 
 ## THINGS TO TRY
-- **Modifier le nombre initial de chaque type d’agent** : Essayez de démarrer avec plus de voleurs ou de gendarmes, et observez comment cela affecte la dynamique de la simulation.
-- **Ajuster la fréquence de perte d’argent** : En rendant les civils plus vulnérables, ils deviennent voleurs plus rapidement, ce qui pourrait déséquilibrer la simulation.
-- **Augmenter la probabilité d’évasion de la prison** : Voyez comment une augmentation de la probabilité de fuite des voleurs affecte la capacité des gendarmes à maintenir l’ordre.
+
+(suggested things for the user to try to do (move sliders, switches, etc.) with the model)
 
 ## EXTENDING THE MODEL
-- **Ajouter des niveaux de ressources pour les gendarmes** : Par exemple, un temps de réaction ou un budget pour capturer les voleurs, limitant ainsi leur efficacité à maintenir l’ordre.
-- **Créer des civils "riches" et "pauvres"** : Cela permettrait de diversifier les interactions, avec des voleurs potentiellement plus attirés par les civils riches.
-- **Complexifier la prison** : Ajouter des conditions pour augmenter ou diminuer la probabilité de fuite selon le nombre de gendarmes.
+
+(suggested things to add or change in the Code tab to make the model more complicated, detailed, accurate, etc.)
 
 ## NETLOGO FEATURES
-Ce modèle utilise des fonctions NetLogo pour gérer les interactions de capture et de libération entre agents, ainsi que pour organiser la zone de prison en tant qu’espace réservé sur la carte. La capacité de conditionner l’état des agents en fonction de leur argent ou de leur proximité avec d'autres agents est un aspect essentiel du modèle. Les événements aléatoires (perte d'argent, évasion) sont également gérés avec des fonctions aléatoires.
+
+(interesting or unusual features of NetLogo that the model uses, particularly in the Code tab; or where workarounds were needed for missing features)
 
 ## RELATED MODELS
-- **Police et Voleurs** : Modèle NetLogo traitant des interactions entre forces de l’ordre et criminels.
-- **Propagation de la rumeur** : Montre des dynamiques similaires d’interaction et d’influence entre agents.
-  
+
+(models in the NetLogo Models Library and elsewhere which are of related interest)
+
 ## CREDITS AND REFERENCES
-Modèle développé sous NetLogo pour illustrer la dynamique entre civils, voleurs, et gendarmes dans un contexte de gestion de sécurité publique. Ce modèle est inspiré de simulations de type "jeu de société". Pour en savoir plus sur NetLogo, consultez [NetLogo](https://ccl.northwestern.edu/netlogo/).
+
+(a reference to the model's URL on the web if it has one, as well as any other necessary credits, citations, and links)
 @#$#@#$#@
 default
 true
