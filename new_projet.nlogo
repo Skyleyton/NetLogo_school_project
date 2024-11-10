@@ -48,9 +48,19 @@ end
 ; Les civils bougent toujours.
 to move-civilians
   ask civilians [
-    right random 30
-    left random 30
-    forward 0.5
+      let prison-patch patch 1 1 ;
+    ifelse distance prison-patch < 8 [
+      ; Si trop proche de la prison, il s'oriente à l'opposé et s'éloigne
+      face prison-patch
+      right 180 ; Se tourner à l'opposé de la prison
+      right random 60 - 30 ; Ajoute une légère variation pour rendre le mouvement moins prévisible
+      forward 1
+    ] [
+      ; Sinon, mouvement normal
+      right random 30
+      left random 30
+      forward 0.5
+    ]
   ]
 end
 
@@ -73,24 +83,24 @@ end
 
 ; Les voleurs bougent uniquement s'ils ne sont pas capturés.
 to move-thieves
-  let prison-patch patch 1 1
+  let prison-patch patch 1 1 ; Coordonnées de la prison
 
   ask thieves with [captured? = false] [
-
+    ; Vérifie si le voleur est trop proche de la prison
     ifelse distance prison-patch < 8 [
-      ; Si trop proche de la prison, ils rebroussent chemin
-      right 160
-      forward 0.5
+      ; Si trop proche de la prison, il s'oriente à l'opposé et s'éloigne
+      face prison-patch
+      right 180 ; Se tourner à l'opposé de la prison
+      right random 60 - 30 ; Ajoute une légère variation pour rendre le mouvement moins prévisible
+      forward 1
     ] [
       ; Sinon, mouvement normal
       right random 30
       left random 30
       forward 0.5
     ]
+
   ]
-
-
-
 
   ask thieves with [is-escorted?] [
     set color orange
