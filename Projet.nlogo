@@ -19,9 +19,10 @@ breed [ thieves thief ]
 turtles-own [ money ]
 
 ; Il n'y a que les policiers et les voleurs qui ont un certain niveau de force et un certain niveau de vitesse.
-thieves-own [ strength speed captured? escort? in-prison? ]
-policemen-own [ strength speed helping? has-captured? release-timer in-prison? ]
+thieves-own [ strength speed captured? is-escorted? in-prison? ]
 
+; l'attribut in-prison-zone? va permettre de savoir si les policiers sont arrivés dans la prison pendant l'escorte d'un voleur.
+policemen-own [ strength speed escorting? has-captured? release-timer in-prison-zone? ]
 
 patches-own [ is-prison? ]
 
@@ -33,27 +34,27 @@ to setup
   set nbrC 25
   setup-civilians
   setup-environment
-  setup-prison
   reset-ticks
   set detection-radius 5 ;
   set stunt-timer timer  ; initialise le temps de début
 end
 
 to move-turtles
-  ; Les civils et policiers bougent toujours
+  ; Les civils bougent toujours.
   ask civilians [
     right random 30
     left random 30
     forward 0.5
   ]
 
-  ask policemen with [not has-captured?] [
+  ; Les policiers bougent uniquement s'ils n'ont pas capturé un voleur ou s'ils ne sont pas en train d'escorter un voleur.
+  ask policemen with [has-captured? = false and escorting? = false] [
     right random 30
     left random 30
     forward 0.5
   ]
 
-  ; Les voleurs bougent uniquement s'ils ne sont pas capturés
+  ; Les voleurs bougent uniquement s'ils ne sont pas capturés.
   ask thieves with [not captured?] [
     right random 30
     left random 30
@@ -61,6 +62,7 @@ to move-turtles
   ]
 end
 
+; L'initialisation des civils.
 to setup-civilians
   create-civilians nbrC [ ; nombre choisi au hasard.
     set color white
@@ -73,11 +75,13 @@ to setup-civilians
   ]
 end
 
-; L'environnement sera de couleur bleu.
+; L'initialisation de l'environnement.
 to setup-environment
   ask patches [
     set pcolor grey
   ]
+  ; On initialise la prison dans l'initialisation de l'environnement.
+  setup-prison
 end
 
 to setup-prison
@@ -92,12 +96,22 @@ to go
   move-turtles
   set money-timer money-timer + 1
 
+  ; Définir la priorité pour choisir entre poursuite ou escorte
+  let priority random 2 ; 0 pour poursuivre, 1 pour escorter
+
   if money-timer mod 3 = 0 [
     lose-money
   ]
 
   check-civilians
-  pursue-thieves
+
+  ifelse priority = 0 [
+    pursue-thieves
+  ]
+  [
+    escort-thief
+  ]
+
   free-thief
 
   ask policemen [
@@ -106,6 +120,7 @@ to go
 
   tick
 end
+
 
 
 to lose-money
@@ -144,23 +159,23 @@ to convert-civilian [civilian-turtle]
   ]
 end
 
-;Fonction pour que les turtles rouges se dirigent vers turtles blancs
+; Fonction pour que les turtles rouges se dirigent vers turtles blancs
 to move-red-toward-nearest-white
-  ask turtles with [color = red] [ ; uniquement les tortues rouges
+  ask turtles with [color = red] [ ; uniquement les tortues rouges (donc les voleurs).
     let target white-nearest-turtle ; trouve la tortue blanche la plus proche
     if target != nobody [
       face target ; oriente la tortue vers la cible
-      forward 0.2 ; avance de 1 unité vers la cible
+      forward 0.2 ; avance de 2 unités vers la cible
     ]
   ]
 end
 
+; Renvoie la tortue blanche la plus proche ou personne si aucune n'existe
 to-report white-nearest-turtle
-  ; renvoie la tortue blanche la plus proche ou personne si aucune n'existe
   report min-one-of turtles with [color = white] [distance myself]
 end
 
-
+; Convertit un civil en policier.
 to convert-civilian-to-policeman [civilian-turtle]
   if [breed] of civilian-turtle = civilians [
     let civ-money [money] of civilian-turtle
@@ -177,13 +192,13 @@ to convert-civilian-to-policeman [civilian-turtle]
         set strength random 10 + 1
         set speed random 3 + 1
 				set has-captured? false ; Initialisation booléenne
-        set in-prison? false
+        set escorting? false
+        set in-prison-zone? false
       ]
       die
     ]
   ]
 end
-
 
 
 ; Cette fonction va créé un turtle de type thief à la place d'un turtle de type civilians
@@ -203,17 +218,18 @@ to convert-civilian-to-thief [civilian-turtle]
         set strength random 10 + 1
         set speed random 3 + 1
         set captured? false ; Initialisation booléenne
-        set escort? false ; Initialisation booléenne
+        set is-escorted? false ; Initialisation booléenne
       ]
       die
     ]
   ]
 end
 
-
+; Pour que les policiers pourchassent les voleurs.
 to pursue-thieves
-  ask policemen with [has-captured? = false] [
-    let nearest-thief min-one-of (thieves in-radius detection-radius) with [captured? = false and escort? = false] [distance myself]
+  ; On choisit uniquement les policiers qui ne bloque personne et qui n'aide personne.
+  ask policemen with [has-captured? = false and escorting? = false] [
+    let nearest-thief min-one-of (thieves in-radius detection-radius) with [captured? = false and is-escorted? = false] [distance myself]
     if nearest-thief != nobody [
       face nearest-thief
       forward 0.1
@@ -224,16 +240,20 @@ to pursue-thieves
   ]
 end
 
+; Pour que les voleurs viennent en aide aux autres voleurs.
 to free-thief
   ask turtles with [color = red] [
-    let nearest-thief min-one-of (thieves in-radius detection-radius) with [captured? = true] [distance myself]
+    ; On cherche un autre voleur qui est capturé, mais pas en train d'être escorté.
+    let nearest-thief min-one-of (thieves in-radius detection-radius) with [captured? = true and is-escorted? = false] [distance myself]
     if nearest-thief != nobody [
       face nearest-thief
       forward 0.1
+      ; Le voleur s'est fait libérer alors il n'est plus captif.
       if distance nearest-thief < 1 [
         ask nearest-thief [
-         set captured? false
-         set color red
+          set captured? false
+          ; set is-escorted? false ; Il n'était déjà pas en train d'être escorté.
+          set color red
         ]
       ]
     ]
@@ -246,6 +266,7 @@ to free-thief
   ]
 end
 
+; Pour indiquer que le policier a capturé un voleur.
 to capture-thief [policeman-turtle thief-turtle]
   ask thief-turtle [
     set captured? true
@@ -253,52 +274,74 @@ to capture-thief [policeman-turtle thief-turtle]
   ]
   ask policeman-turtle [
     set has-captured? true ; Marque le policier comme ayant capturé un voleur
-    set helping? true
+    set escorting? true
     set color black ; Indique que le policier a attrapé un voleur.
     set release-timer 0 ; Initialiser le compteur
   ]
-
-  ; Cherche un deuxième policier dans le rayon de détection qui n'a pas capturé
-  let second-policeman min-one-of (policemen in-radius detection-radius) with [has-captured? = false and helping? = false] [distance policeman-turtle]
-
-  if second-policeman != nobody [
-    face policeman-turtle
-    forward 0.1
-    if distance policeman-turtle < 1 [
-      ask second-policeman [
-        set helping? true ; marque le policier comme aidant
-        ; escort-thief policeman-turtle thief-turtle second-policeman ; Lance l'escorte
-      ]
-    ]
-  ]
 end
 
-; Fonction permettant à un autre policier de venir aider un policier ayant arrêté un voleur.
-to help-policeman
-  ask turtles with [color = blue] [
-    let nearest-policeman-blocking-thief min-one-of (policemen in-radius detection-radius) with [has-captured? = true] [distance myself]
-    if nearest-policeman-blocking-thief != nobody [
-      face nearest-policeman-blocking-thief
-      forward 0.1
-    ]
-  ]
-end
-
+; Pour faire en sorte qu'un policier lâche le voleur qu'il tenait et soit étourdi.
 to stunt-policemen [stunt-policeman]
   ask stunt-policeman [
     if release-timer > 0 [
       set release-timer release-timer + 1
       if release-timer >= 5 [
         set has-captured? false
-        set helping? false
+        set escorting? false
+        set color blue ; On le repasse en bleu
         set release-timer 0 ; Réinitialiser le compteur
       ]
     ]
   ]
 end
 
-to escort-thief [first-policeman thief-turtle second-policeman]
+; Permets à deux policiers d'escorter un voleur.
+to escort-thief
+  let prison-patch patch 1 1
 
+  ; Policier principal qui effectue l'escorte
+  ask policemen with [has-captured? = true and escorting? = false] [
+    let nearest-thief min-one-of (thieves in-radius detection-radius) with [captured? = true and is-escorted? = false] [distance myself]
+    let second-policeman min-one-of (policemen in-radius detection-radius) with [has-captured? = false and escorting? = false] [distance myself]
+
+    if nearest-thief != nobody and second-policeman != nobody [
+      ; Lancer l'escorte
+      set escorting? true
+      set color orange
+
+      ask second-policeman [
+        set escorting? true
+        set color orange
+      ]
+
+      ask nearest-thief [
+        set is-escorted? true
+        face prison-patch
+        forward 0.1
+      ]
+    ]
+  ]
+
+  ; Déplacement de chaque participant vers la prison
+  ask policemen with [escorting? = true] [
+    face prison-patch
+    forward 0.1
+    if distance prison-patch < 1 [
+      set escorting? false
+      set has-captured? false
+      set color blue
+    ]
+  ]
+
+  ask thieves with [is-escorted? = true] [
+    face prison-patch
+    forward 0.1
+    if distance prison-patch < 1 [
+      set is-escorted? false
+      set in-prison? true
+      set color grey ; Changement de couleur pour indiquer l'emprisonnement
+    ]
+  ]
 end
 @#$#@#$#@
 GRAPHICS-WINDOW
@@ -380,7 +423,7 @@ true
 PENS
 "Voleurs" 1.0 0 -2674135 true "" "plot count turtles with [color = red]"
 "Policier" 1.0 0 -13345367 true "" "plot count turtles with [color = blue]"
-"Civils" 1.0 0 -16777216 true "" "plot count turtles with [color = white]"
+"Civils" 1.0 0 -11053225 true "" "plot count turtles with [color = white]"
 "Voleurs Capturés" 1.0 0 -1184463 true "" "plot count turtles with [color = yellow]"
 
 @#$#@#$#@
