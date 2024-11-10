@@ -40,25 +40,51 @@ to setup
 end
 
 to move-turtles
-  ; Les civils bougent toujours.
+  move-civilians
+  move-policemen
+  move-thieves
+end
+
+; Les civils bougent toujours.
+to move-civilians
   ask civilians [
     right random 30
     left random 30
     forward 0.5
   ]
+end
 
-  ; Les policiers bougent uniquement s'ils n'ont pas capturé un voleur ou s'ils ne sont pas en train d'escorter un voleur.
-  ask policemen with [has-captured? = false and escorting? = false] [
+; Les policiers bougent uniquement s'ils n'ont pas capturé un voleur ou s'ils ne sont pas en train d'escorter un voleur.
+to move-policemen
+  let prison-patch patch 1 1
+
+  ask policemen with [has-captured? = false] [
     right random 30
     left random 30
     forward 0.5
   ]
 
-  ; Les voleurs bougent uniquement s'ils ne sont pas capturés.
-  ask thieves with [not captured?] [
+  ; Faire en sorte que les policiers qui sont en escorte se dirige vers la prison avec le voleur.
+  ask policemen with [escorting?] [
+    face prison-patch
+    forward 0.1
+  ]
+end
+
+; Les voleurs bougent uniquement s'ils ne sont pas capturés.
+to move-thieves
+  let prison-patch patch 1 1
+
+  ask thieves with [captured? = false] [
     right random 30
     left random 30
     forward 0.5
+  ]
+
+  ask thieves with [is-escorted?] [
+    set color orange
+    face prison-patch
+    forward 0.1
   ]
 end
 
@@ -103,7 +129,7 @@ to go
 
   check-civilians
   pursue-thieves
-  ; escort-thief
+  escort-thief
   free-thief
 
   ask policemen [
@@ -265,7 +291,7 @@ to capture-thief [policeman-turtle thief-turtle]
   ]
   ask policeman-turtle [
     set has-captured? true ; Marque le policier comme ayant capturé un voleur
-    set escorting? true
+    ; set escorting? true
     set color black ; Indique que le policier a attrapé un voleur.
     set release-timer 0 ; Initialiser le compteur
   ]
@@ -298,11 +324,9 @@ to escort-thief
     if nearest-thief != nobody and second-policeman != nobody [
       ; Lancer l'escorte
       set escorting? true
-      set color orange
 
       ask second-policeman [
         set escorting? true
-        set color orange
       ]
 
       ask nearest-thief [
@@ -313,7 +337,7 @@ to escort-thief
     ]
   ]
 
-  ; Déplacement de chaque participant vers la prison
+  ; Déplacement de chaque policiers vers la prison
   ask policemen with [escorting? = true] [
     face prison-patch
     forward 0.1
