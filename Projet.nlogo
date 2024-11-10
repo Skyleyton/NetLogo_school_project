@@ -131,14 +131,30 @@ to go
   pursue-thieves
   escort-thief
   free-thief
+  check-prisoners ;
 
   ask policemen [
-    stunt-policemen self ; Vérifier le délai pour chaque policier
+    stunt-policemen self ;  Donne une chance aux prisonniers de s'échapper (1%)
   ]
 
   tick
 end
 
+
+; Pourcentage de chance pour qu'un prisonier puisse sévader
+to check-prisoners
+  ask thieves with [in-prison? = true] [ ; Vérifie les voleurs en prison
+    if random-float 1 < 0.01 [ ; 1% de chance très rapide tout de meme
+      set in-prison? false ; Libère le prisonnier
+      set captured? false
+      set is-escorted? false
+      set color red ; Redéfinir la couleur pour indiquer qu'il est de nouveau actif
+      ; Permet au voleur de bouger
+      right random 360
+      forward 1
+    ]
+  ]
+end
 
 to lose-money
   ; Vérifie s'il reste au moins 5 tortues civiles
