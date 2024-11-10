@@ -76,6 +76,7 @@ to move-thieves
   let prison-patch patch 1 1
 
   ask thieves with [captured? = false] [
+
     ifelse distance prison-patch < 8 [
       ; Si trop proche de la prison, ils rebroussent chemin
       right 160
@@ -90,6 +91,16 @@ to move-thieves
   
   
   
+
+  ask thieves with [is-escorted?] [
+    set color orange
+    face prison-patch
+    forward 0.1
+    right random 30
+    left random 30
+    forward 0.5
+
+  ]
 
   ask thieves with [is-escorted?] [
     set color orange
@@ -141,14 +152,33 @@ to go
   pursue-thieves
   escort-thief
   free-thief
+  check-prisoners ;
 
   ask policemen [
-    stunt-policemen self ; Vérifier le délai pour chaque policier
+    stunt-policemen self ;  Donne une chance aux prisonniers de s'échapper (1%)
   ]
 
   tick
 end
 
+
+
+; Pourcentage de chance pour qu'un prisonier puisse sévader
+to check-prisoners
+  let potential-escapee one-of thieves with [in-prison? = true] ; Sélectionne un seul prisonnier aléatoire
+  if potential-escapee != nobody [ ; Vérifie s'il y a des prisonniers
+    ask potential-escapee [
+      if random-float 1 < 0.01 [ ; 10% de chance d'évasion
+        set in-prison? false ; Libère le prisonnier
+        set captured? false
+        set is-escorted? false
+        set color red ; Redéfinir la couleur pour indiquer qu'il est de nouveau actif
+        right random 360 ; Tourne aléatoirement
+        forward 3 ; Commence à bouger et s'éloigne
+      ]
+    ]
+  ]
+end
 
 to lose-money
   ; Vérifie s'il reste au moins 5 tortues civiles
