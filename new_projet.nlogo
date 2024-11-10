@@ -102,6 +102,9 @@ to move-thieves
       forward 0.5
       ]
     ]
+  ]
+
+
 
 
   ask thieves with [is-escorted?] [
@@ -518,10 +521,7 @@ ticks
 30.0
 
 BUTTON
-30
-74
-93
-107
+
 NIL
 setup\n
 NIL
@@ -535,10 +535,7 @@ NIL
 1
 
 BUTTON
-138
-75
-201
-108
+
 NIL
 go
 T
@@ -552,10 +549,7 @@ NIL
 1
 
 PLOT
-18
-207
-549
-491
+
 Nombre de turtle
 NIL
 NIL
