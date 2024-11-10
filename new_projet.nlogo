@@ -76,30 +76,9 @@ to move-thieves
   let prison-patch patch 1 1
 
   ask thieves with [captured? = false] [
-
-    ifelse distance prison-patch < 8 [
-      ; Si trop proche de la prison, ils rebroussent chemin
-      right 160
-      forward 0.5
-    ] [
-      ; Sinon, mouvement normal
-      right random 30
-      left random 30
-      forward 0.5
-    ]
-  ]
-
-
-
-
-  ask thieves with [is-escorted?] [
-    set color orange
-    face prison-patch
-    forward 0.1
     right random 30
     left random 30
     forward 0.5
-
   ]
 
   ask thieves with [is-escorted?] [
@@ -162,13 +141,12 @@ to go
 end
 
 
-
 ; Pourcentage de chance pour qu'un prisonier puisse sévader
 to check-prisoners
   let potential-escapee one-of thieves with [in-prison? = true] ; Sélectionne un seul prisonnier aléatoire
   if potential-escapee != nobody [ ; Vérifie s'il y a des prisonniers
     ask potential-escapee [
-      if random-float 1 < 0.01 [ ; 10% de chance d'évasion
+      if random-float 1 < 0.05 [ ; 5% de chance d'évasion
         set in-prison? false ; Libère le prisonnier
         set captured? false
         set is-escorted? false
@@ -419,8 +397,8 @@ GRAPHICS-WINDOW
 16
 -16
 16
-0
-0
+1
+1
 1
 ticks
 30.0
