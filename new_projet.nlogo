@@ -5,7 +5,6 @@ globals [
   number-max-money
   number-min-money ; Il faut descendre en dessous de ce seuil pour devenir voleur.
   money-timer ; compteur pour gérer la fréquence de perte d'argent
-  ;nbrC
   detection-radius ;
   stunt-timer
   gain-money-timer ;timer pour que les civils gagne de l'argent
@@ -32,7 +31,6 @@ to setup
   set number-max-money 250 ; Les civils ne peuvent avoir que 250 pièces au maximum.
   set number-min-money 25 ; Si ce seuil est dépassé, le civil devient un voleur.
   set money-timer 0 ; initialisation du timer
-  ;set nbrC 50
   setup-civilians
   setup-environment
   reset-ticks
@@ -108,16 +106,6 @@ to move-thieves
     set color orange
     face prison-patch
     forward 0.1
-    right random 30
-    left random 30
-    forward 0.5
-
-  ]
-
-  ask thieves with [is-escorted?] [
-    set color orange
-    face prison-patch
-    forward 0.1
   ]
 end
 
@@ -157,7 +145,7 @@ to go
   set gain-money-timer gain-money-timer + 1
   let priority 0
 
-  if money-timer mod 3 = 0 [
+  if money-timer mod freq_lose_money = 0 [
     lose-money
   ]
 
@@ -188,7 +176,7 @@ to check-prisoners
   let potential-escapee one-of thieves with [in-prison? = true] ; Sélectionne un seul prisonnier aléatoire
   if potential-escapee != nobody [ ; Vérifie s'il y a des prisonniers
     ask potential-escapee [
-      if random-float 1 < 0.01 [ ; 10% de chance d'évasion
+      if random-float 1 < taux_evasion / 10000 [ ; 10% de chance d'évasion
         set in-prison? false ; Libère le prisonnier
         set captured? false
         set is-escorted? false
@@ -419,6 +407,7 @@ to escort-thief
   ]
 end
 
+;Fonction pour éviter les policiers
 to evade-policemen
   ask thieves with [not captured? and not is-escorted?] [
     ; Trouver le policier le plus proche dans le rayon d'évitement
@@ -552,10 +541,10 @@ NIL
 1
 
 PLOT
-18
-207
-549
-491
+1075
+59
+1606
+343
 Nombre de turtle
 NIL
 NIL
@@ -573,10 +562,10 @@ PENS
 "Voleurs Capturés" 1.0 0 -1184463 true "" "plot count turtles with [color = yellow]"
 
 MONITOR
-18
-161
-189
-206
+1075
+13
+1246
+58
 Nombre de voleurs en prison
 count turtles with [color = grey]
 17
@@ -584,10 +573,10 @@ count turtles with [color = grey]
 11
 
 SLIDER
-251
-75
-423
-108
+23
+152
+195
+185
 nbrC
 nbrC
 10
@@ -599,14 +588,64 @@ NIL
 HORIZONTAL
 
 TEXTBOX
-255
-57
-405
-75
+27
+134
+177
+152
 Nombre initial de civil:\n
 11
 0.0
 1
+
+TEXTBOX
+27
+215
+177
+243
+Fréquence de perte d'argent (en seconde):\n
+11
+0.0
+1
+
+SLIDER
+24
+248
+196
+281
+freq_lose_money
+freq_lose_money
+1
+10
+1.0
+1
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+29
+311
+179
+329
+Taux d'évasion
+11
+0.0
+1
+
+SLIDER
+28
+333
+200
+366
+taux_evasion
+taux_evasion
+0
+100
+100.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## WHAT IS IT?
