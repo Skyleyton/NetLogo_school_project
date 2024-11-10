@@ -56,8 +56,19 @@ to move-turtles
 
   ; Les voleurs bougent uniquement s'ils ne sont pas capturés.
   ask thieves with [not captured?] [
-    right random 30
-    left random 30
+    ; Choisir une direction aléatoire pour le mouvement
+    let new-heading heading + (random 60 - 30) ; variation de direction
+    set heading new-heading
+    let new-x xcor + dx * 0.5
+    let new-y ycor + dy * 0.5
+
+    ; Vérifie si le patch de destination est une zone de prison dans un rayon de 1 ou 2 unités
+    if any? patches in-radius 2 with [is-prison? = true] [
+      ; Si le patch est proche de la prison, changer de direction de manière à éviter le patch prison
+      set heading heading + 160 ; tourner dans la direction opposée
+    ]
+
+    ; Avancer si la direction est sûre
     forward 0.5
   ]
 end
