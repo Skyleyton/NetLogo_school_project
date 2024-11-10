@@ -95,23 +95,15 @@ end
 to go
   move-turtles
   set money-timer money-timer + 1
-
-  ; Définir la priorité pour choisir entre poursuite ou escorte
-  let priority random 2 ; 0 pour poursuivre, 1 pour escorter
+  let priority 0
 
   if money-timer mod 3 = 0 [
     lose-money
   ]
 
   check-civilians
-
-  ifelse priority = 0 [
-    pursue-thieves
-  ]
-  [
-    escort-thief
-  ]
-
+  pursue-thieves
+  ; escort-thief
   free-thief
 
   ask policemen [
@@ -120,7 +112,6 @@ to go
 
   tick
 end
-
 
 
 to lose-money
