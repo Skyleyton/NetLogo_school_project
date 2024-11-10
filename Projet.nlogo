@@ -337,7 +337,6 @@ to escort-thief
     ]
   ]
 
-  ; Déplacement de chaque policiers vers la prison
   ask policemen with [escorting? = true] [
     face prison-patch
     forward 0.1
