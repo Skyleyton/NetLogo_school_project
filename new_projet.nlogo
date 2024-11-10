@@ -89,9 +89,6 @@ to move-thieves
     ]
   ]
 
-
-
-
   ask thieves with [is-escorted?] [
     set color orange
     face prison-patch
@@ -426,9 +423,9 @@ ticks
 30.0
 
 BUTTON
-94
+121
 21
-163
+190
 62
 NIL
 setup
@@ -443,9 +440,9 @@ NIL
 1
 
 BUTTON
-189
+216
 21
-261
+288
 61
 NIL
 go
@@ -460,9 +457,9 @@ NIL
 1
 
 PLOT
-4
+19
 164
-385
+400
 392
 Nombre de turtle
 NIL
