@@ -5,9 +5,10 @@ globals [
   number-max-money
   number-min-money ; Il faut descendre en dessous de ce seuil pour devenir voleur.
   money-timer ; compteur pour gérer la fréquence de perte d'argent
-  nbrC
+  ;nbrC
   detection-radius ;
   stunt-timer
+  gain-money-timer ;timer pour que les civils gagne de l'argent
 ]
 
 ; Il y a 3 types d'agents.
@@ -31,12 +32,13 @@ to setup
   set number-max-money 250 ; Les civils ne peuvent avoir que 250 pièces au maximum.
   set number-min-money 25 ; Si ce seuil est dépassé, le civil devient un voleur.
   set money-timer 0 ; initialisation du timer
-  set nbrC 25
+  ;set nbrC 50
   setup-civilians
   setup-environment
   reset-ticks
   set detection-radius 5 ;
   set stunt-timer timer  ; initialise le temps de début
+  set gain-money-timer 0; Initialisation du timer pour l'ajout d'argent
 end
 
 to move-turtles
@@ -117,14 +119,19 @@ to setup-prison
     set is-prison? true
   ]
 end
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 to go
   move-turtles
   set money-timer money-timer + 1
+  set gain-money-timer gain-money-timer + 1
   let priority 0
 
   if money-timer mod 3 = 0 [
     lose-money
+  ]
+
+  if gain-money-timer mod 5 = 0 [
+    gain-money-for-civilians
   ]
 
   check-civilians
@@ -132,6 +139,9 @@ to go
   escort-thief
   free-thief
   check-prisoners ;
+  evade-policemen
+  steal-money
+  check-thieves-money ; Vérifie si un voleur devient civil
 
   ask policemen [
     stunt-policemen self ;  Donne une chance aux prisonniers de s'échapper (1%)
@@ -163,7 +173,7 @@ to lose-money
     let turtles-to-lose-money n-of 5 civilians
 
     ask turtles-to-lose-money [
-      let amount-to-lose random 10 + 1 ; un montant entre 1 et 10
+      let amount-to-lose random 20 + 1 ; un montant entre 1 et 10
       set money money - amount-to-lose ; décrémenter la variable money
       if money < 0 [ set money 0 ] ; s'assurer que l'argent ne devient pas négatif
       set label-color black
@@ -373,6 +383,77 @@ to escort-thief
     ]
   ]
 end
+
+to evade-policemen
+  ask thieves with [not captured? and not is-escorted?] [
+    ; Trouver le policier le plus proche dans le rayon d'évitement
+    let nearest-policeman min-one-of (policemen in-radius detection-radius) [distance myself]
+
+    ; Si un policier est détecté à proximité
+    if nearest-policeman != nobody [
+      ; Se tourner dans la direction opposée au policier le plus proche
+      face nearest-policeman
+      rt 180 ; rotation de 180 degrés pour faire face à l'opposé
+      forward 0.1 ; avancer pour s'éloigner
+    ]
+  ]
+end
+
+to steal-money
+  ask thieves with [color = red and not captured?] [
+    ; Trouver le civil le plus proche (dans le même patch) pour le voler
+    let target-civil one-of civilians-here
+    if target-civil != nobody [
+      ; Calculer une quantité aléatoire d'argent à voler
+      let amount-stolen random ([money] of target-civil) + 1
+
+      ; Transférer l'argent du civil vers le voleur
+      ask target-civil [
+        set money money - amount-stolen
+        if money < 0 [ set money 0 ] ; S'assure que l'argent ne devient pas négatif
+        set label money ; Mettre à jour l'affichage de l'argent
+      ]
+
+      set money money + amount-stolen ; Le voleur récupère l'argent volé
+      set label money ; Met à jour l'affichage de l'argent pour le voleur
+    ]
+  ]
+end
+
+
+to check-thieves-money
+  ask thieves [
+    if money >= 150 [
+      convert-thief-to-civilian self
+    ]
+  ]
+end
+
+to convert-thief-to-civilian [thief-turtle]
+  let thief-money [money] of thief-turtle
+  let thief-xcor [xcor] of thief-turtle
+  let thief-ycor [ycor] of thief-turtle
+
+  ask thief-turtle [
+    hatch-civilians 1 [
+      set money thief-money
+      set color white
+      set shape "person"
+      set size 2
+      setxy thief-xcor thief-ycor
+      set label money ; Met à jour l'affichage de l'argent
+    ]
+    die ; Supprime l'agent voleur initial
+  ]
+end
+
+to gain-money-for-civilians
+  ask civilians with [money <= number-max-money][
+    let amount-to-gain random 10 + 1 ; Montant entre 1 et 10
+    set money money + amount-to-gain ; Ajoute la quantité au civil
+    set label money ; Met à jour le label pour afficher la nouvelle valeur d'argent
+  ]
+end
 @#$#@#$#@
 GRAPHICS-WINDOW
 586
@@ -455,6 +536,42 @@ PENS
 "Policier" 1.0 0 -13345367 true "" "plot count turtles with [color = blue]"
 "Civils" 1.0 0 -11053225 true "" "plot count turtles with [color = white]"
 "Voleurs Capturés" 1.0 0 -1184463 true "" "plot count turtles with [color = yellow]"
+
+MONITOR
+18
+161
+189
+206
+Nombre de voleurs en prison
+count turtles with [color = grey]
+17
+1
+11
+
+SLIDER
+251
+75
+423
+108
+nbrC
+nbrC
+10
+50
+10.0
+1
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+255
+57
+405
+75
+Nombre initial de civil:\n
+11
+0.0
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
