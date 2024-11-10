@@ -202,12 +202,13 @@ end
 
 to lose-money
   ; Vérifie s'il reste au moins 5 tortues civiles
-  if count civilians >= 5 [
-    ; Sélectionne aléatoirement 5 tortues civiles
-    let turtles-to-lose-money n-of 5 civilians
+  if count civilians >= nbrC - 5 [
+
+    let nb nbrC - 5
+    let turtles-to-lose-money n-of nb civilians
 
     ask turtles-to-lose-money [
-      let amount-to-lose random 20 + 1 ; un montant entre 1 et 10
+      let amount-to-lose random 20 + 10 ; un montant entre 1 et 10
       set money money - amount-to-lose ; décrémenter la variable money
       if money < 0 [ set money 0 ] ; s'assurer que l'argent ne devient pas négatif
       set label-color black
@@ -457,7 +458,7 @@ end
 
 to check-thieves-money
   ask thieves [
-    if money >= 150 [
+    if money >= 250 [
       convert-thief-to-civilian self
     ]
   ]
@@ -591,7 +592,7 @@ nbrC
 nbrC
 10
 50
-17.0
+10.0
 1
 1
 NIL
