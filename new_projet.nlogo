@@ -102,7 +102,7 @@ to move-thieves
       forward 0.5
       ]
     ]
-  ]
+
 
   ask thieves with [is-escorted?] [
     set color orange
@@ -591,7 +591,7 @@ nbrC
 nbrC
 10
 50
-10.0
+17.0
 1
 1
 NIL
